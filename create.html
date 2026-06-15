@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Create a reader poll</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --paper:#ffffff; --ink:#14161a; --ink-soft:#5b6470; --hair:#e3e6ea;
+    --field:#4338ca; --field-soft:#eef0fc; --you:#b45309;
+    --serif:'Fraunces',Georgia,serif; --sans:'Inter',system-ui,sans-serif;
+    --mono:'IBM Plex Mono',ui-monospace,monospace;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:#f6f7f8;color:var(--ink);font-family:var(--sans);line-height:1.45;}
+  .page{max-width:680px;margin:0 auto;padding:40px 20px 80px;}
+  h1{font-family:var(--serif);font-weight:560;font-size:30px;letter-spacing:-.015em;margin:0 0 4px;}
+  .sub{color:var(--ink-soft);font-size:15px;margin:0 0 28px;}
+  .card{background:var(--paper);border:1px solid var(--hair);border-radius:12px;padding:24px;margin-bottom:18px;}
+  label{display:block;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-soft);font-weight:600;margin:0 0 7px;}
+  .field{margin-bottom:20px;}
+  input[type=text]{
+    width:100%;font-family:var(--sans);font-size:15px;color:var(--ink);
+    border:1px solid var(--hair);border-radius:8px;padding:11px 13px;background:#fff;
+  }
+  input[type=text]:focus{outline:2px solid var(--field);outline-offset:1px;border-color:var(--field);}
+  .opt-row{display:flex;gap:8px;align-items:center;margin-bottom:8px;}
+  .opt-row .idx{font-family:var(--mono);font-size:12px;color:var(--ink-soft);width:18px;text-align:right;}
+  .opt-row input{flex:1;}
+  .x{border:1px solid var(--hair);background:#fff;border-radius:7px;width:38px;height:40px;cursor:pointer;color:var(--ink-soft);font-size:18px;line-height:1;flex:none;}
+  .x:hover:not(:disabled){border-color:var(--you);color:var(--you);}
+  .x:disabled{opacity:.35;cursor:default;}
+  .addbtn{margin-top:4px;background:none;border:1px dashed var(--hair);border-radius:8px;padding:10px;width:100%;cursor:pointer;color:var(--field);font-family:var(--sans);font-weight:500;font-size:14px;}
+  .addbtn:hover:not(:disabled){border-color:var(--field);background:var(--field-soft);}
+  .addbtn:disabled{opacity:.4;cursor:default;}
+  .idline{display:flex;gap:8px;}
+  .idline input{flex:1;font-family:var(--mono);}
+  .ghost{border:1px solid var(--hair);background:#fff;border-radius:8px;padding:0 14px;cursor:pointer;font-family:var(--sans);font-weight:500;font-size:13px;color:var(--ink);}
+  .ghost:hover{border-color:var(--field);color:var(--field);}
+  .note{font-size:12px;color:var(--ink-soft);margin-top:7px;}
+  .primary{background:var(--field);color:#fff;border:none;border-radius:9px;padding:13px 20px;font-family:var(--sans);font-weight:600;font-size:15px;cursor:pointer;width:100%;}
+  .primary:hover{background:#3730a3;}
+  .out{display:none;}
+  .out.show{display:block;}
+  .outblock{margin-bottom:18px;}
+  .outblock label{display:flex;justify-content:space-between;align-items:center;}
+  .copy{cursor:pointer;color:var(--field);font-weight:600;text-transform:none;letter-spacing:0;font-size:12px;border:none;background:none;padding:0;}
+  textarea{width:100%;font-family:var(--mono);font-size:12.5px;color:var(--ink);border:1px solid var(--hair);border-radius:8px;padding:11px 13px;background:#fbfbfc;resize:vertical;line-height:1.5;}
+  .preview{border:1px solid var(--hair);border-radius:12px;overflow:hidden;background:#fff;}
+  .preview .bar{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-soft);font-weight:600;padding:10px 14px;border-bottom:1px solid var(--hair);}
+  iframe{width:100%;border:0;display:block;}
+</style>
+</head>
+<body>
+<div class="page">
+  <h1>Create a reader poll</h1>
+  <p class="sub">One question, three to six answers. The poll lives entirely in its link — paste the embed anywhere. Votes tally live and reset at midnight Pacific.</p>
+
+  <div class="card">
+    <div class="field">
+      <label for="q">Question</label>
+      <input type="text" id="q" maxlength="180" placeholder="What should we cover next?" />
+    </div>
+
+    <div class="field">
+      <label>Answers <span style="text-transform:none;letter-spacing:0;font-weight:500;">(3–6)</span></label>
+      <div id="opts"></div>
+      <button class="addbtn" id="add" type="button">+ Add answer</button>
+    </div>
+
+    <div class="field">
+      <label for="pid">Poll ID <span style="text-transform:none;letter-spacing:0;font-weight:500;">— ties votes together</span></label>
+      <div class="idline">
+        <input type="text" id="pid" maxlength="64" />
+        <button class="ghost" id="regen" type="button">New ID</button>
+      </div>
+      <p class="note">Reuse an ID to keep tallying the same poll. Change it to start a fresh count.</p>
+    </div>
+
+    <div class="field">
+      <label for="base">Widget URL <span style="text-transform:none;letter-spacing:0;font-weight:500;">— where index.html is hosted</span></label>
+      <input type="text" id="base" />
+      <p class="note">Defaults to this page's folder. Point it at wherever you deployed <code>index.html</code>.</p>
+    </div>
+
+    <button class="primary" id="build" type="button">Build poll link</button>
+  </div>
+
+  <div class="out card" id="out">
+    <div class="outblock">
+      <label>Share link <button class="copy" data-copy="url">Copy</button></label>
+      <textarea id="url" rows="2" readonly></textarea>
+    </div>
+    <div class="outblock">
+      <label>Embed code <button class="copy" data-copy="embed">Copy</button></label>
+      <textarea id="embed" rows="3" readonly></textarea>
+      <p class="note">Paste into an HTML / embed block. For platforms that accept a bare URL (Substack, Notion, etc.), the share link above usually unfurls on its own.</p>
+    </div>
+    <div class="outblock" style="margin-bottom:0">
+      <label style="display:block">Live preview</label>
+      <div class="preview"><div class="bar">Preview</div><iframe id="prev" height="300"></iframe></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const $ = (id)=>document.getElementById(id);
+const optsEl = $('opts');
+
+function newId(){
+  const a='abcdefghijkmnpqrstuvwxyz23456789';
+  let s=''; for(let i=0;i<8;i++) s+=a[Math.floor(Math.random()*a.length)];
+  return s;
+}
+
+function optRow(value=''){
+  const row=document.createElement('div'); row.className='opt-row';
+  row.innerHTML=`<span class="idx"></span><input type="text" maxlength="120" placeholder="Answer" value="${value.replace(/"/g,'&quot;')}"/><button class="x" type="button" aria-label="Remove answer">×</button>`;
+  row.querySelector('.x').addEventListener('click',()=>{ row.remove(); sync(); });
+  optsEl.appendChild(row);
+}
+
+function sync(){
+  const rows=[...optsEl.querySelectorAll('.opt-row')];
+  rows.forEach((r,i)=>{ r.querySelector('.idx').textContent=(i+1); r.querySelector('.x').disabled = rows.length<=3; });
+  $('add').disabled = rows.length>=6;
+}
+
+function b64url(str){
+  const b64=btoa(unescape(encodeURIComponent(str)));
+  return b64.replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+}
+
+function build(){
+  const q=$('q').value.trim();
+  const opts=[...optsEl.querySelectorAll('.opt-row input')].map(i=>i.value.trim()).filter(Boolean);
+  const id=$('pid').value.trim()||newId();
+  $('pid').value=id;
+  if(!q){ alert('Add a question first.'); return; }
+  if(opts.length<3){ alert('Add at least 3 answers.'); return; }
+  if(opts.length>6){ alert('No more than 6 answers.'); return; }
+
+  const payload=b64url(JSON.stringify({i:id,q:q,o:opts}));
+  let base=$('base').value.trim();
+  if(!base) base=defaultBase();
+  const url = base + (base.includes('?')?'&':(base.includes('#')?'':'?')) + 'p=' + payload;
+
+  $('url').value=url;
+  $('embed').value=`<iframe src="${url}" width="100%" height="320" style="border:0;max-width:520px" title="Reader poll" loading="lazy"></iframe>`;
+  $('prev').src=url;
+  $('out').classList.add('show');
+  $('out').scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+function defaultBase(){
+  // same folder as this page, pointing at index.html
+  const u=new URL(location.href);
+  u.search=''; u.hash='';
+  u.pathname=u.pathname.replace(/[^/]*$/,'index.html');
+  return u.toString();
+}
+
+// copy buttons
+document.addEventListener('click',(e)=>{
+  const b=e.target.closest('.copy'); if(!b) return;
+  const ta=$(b.dataset.copy); ta.select();
+  navigator.clipboard.writeText(ta.value).then(()=>{ const t=b.textContent; b.textContent='Copied'; setTimeout(()=>b.textContent=t,1200); });
+});
+
+$('add').addEventListener('click',()=>{ optRow(); sync(); });
+$('regen').addEventListener('click',()=>{ $('pid').value=newId(); });
+$('build').addEventListener('click', build);
+
+// init
+['','',''].forEach(()=>optRow());
+sync();
+$('pid').value=newId();
+$('base').value=defaultBase();
+</script>
+</body>
+</html>

@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Reader Poll</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet" />
+<style>
+  /* ====================================================================
+     CONFIG — paste your Supabase values here (Project Settings -> API)
+     ==================================================================== */
+  /* handled in JS below */
+
+  :root{
+    --paper:#ffffff;
+    --ink:#14161a;
+    --ink-soft:#5b6470;
+    --hair:#e3e6ea;
+    --field:#4338ca;          /* the field — indigo */
+    --field-track:#eef0fc;
+    --you:#b45309;            /* your vote — amber */
+    --you-soft:#fdf4e7;
+    --radius:10px;
+    --serif:'Fraunces', Georgia, 'Times New Roman', serif;
+    --sans:'Inter', system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+    --mono:'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;background:transparent;}
+  body{
+    font-family:var(--sans);
+    color:var(--ink);
+    -webkit-font-smoothing:antialiased;
+    line-height:1.4;
+  }
+
+  .poll{
+    max-width:520px;
+    margin:0 auto;
+    border:1px solid var(--hair);
+    border-radius:var(--radius);
+    padding:20px 22px 16px;
+    background:var(--paper);
+  }
+
+  /* eyebrow row */
+  .meta{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:12px;
+    font-size:11px;
+    letter-spacing:.09em;
+    text-transform:uppercase;
+    color:var(--ink-soft);
+    font-weight:600;
+  }
+  .live{display:flex;align-items:center;gap:7px;font-family:var(--mono);letter-spacing:.02em;text-transform:none;}
+  .dot{width:7px;height:7px;border-radius:50%;background:var(--field);position:relative;}
+  .dot::after{content:"";position:absolute;inset:-3px;border-radius:50%;background:var(--field);opacity:.35;animation:pulse 2s ease-out infinite;}
+  @keyframes pulse{0%{transform:scale(.6);opacity:.5;}100%{transform:scale(2.4);opacity:0;}}
+
+  .question{
+    font-family:var(--serif);
+    font-weight:560;
+    font-size:21px;
+    line-height:1.25;
+    margin:13px 0 16px;
+    letter-spacing:-.01em;
+  }
+
+  .options{display:flex;flex-direction:column;gap:8px;}
+
+  /* an option as a button (pre-vote) and as a result row (post-vote) share a base */
+  .opt{
+    position:relative;
+    width:100%;
+    text-align:left;
+    border:1px solid var(--hair);
+    border-radius:8px;
+    background:var(--paper);
+    color:var(--ink);
+    font-family:var(--sans);
+    font-size:15px;
+    font-weight:500;
+    padding:11px 14px;
+    cursor:pointer;
+    overflow:hidden;
+    transition:border-color .15s ease, background .15s ease;
+  }
+  .opt:hover:not(:disabled){border-color:var(--field);}
+  .opt:focus-visible{outline:2px solid var(--field);outline-offset:2px;}
+  .opt:disabled{cursor:default;}
+
+  /* result mode */
+  .opt .fill{
+    position:absolute;inset:0;
+    width:0%;
+    background:var(--field-track);
+    z-index:0;
+    transition:width .6s cubic-bezier(.22,.61,.36,1);
+  }
+  .opt.mine .fill{background:var(--you-soft);}
+  .opt .row{position:relative;z-index:1;display:flex;align-items:center;justify-content:space-between;gap:12px;}
+  .opt .label{display:flex;align-items:center;gap:9px;min-width:0;}
+  .opt .label .text{overflow:hidden;text-overflow:ellipsis;}
+  .tag{
+    font-family:var(--mono);font-size:10px;font-weight:600;letter-spacing:.04em;
+    color:var(--you);background:var(--you-soft);
+    border:1px solid #f0d9b8;border-radius:99px;padding:2px 7px;white-space:nowrap;
+  }
+  .pct{font-family:var(--mono);font-weight:600;font-size:14px;font-variant-numeric:tabular-nums;white-space:nowrap;}
+  .opt.mine .pct{color:var(--you);}
+  .opt.leading:not(.mine) .label .text{font-weight:600;}
+
+  .results-mode .opt{cursor:pointer;}
+  .results-mode .opt:hover:not(.mine){border-color:var(--field);}
+
+  .foot{
+    display:flex;align-items:center;justify-content:space-between;gap:10px;
+    margin-top:14px;padding-top:11px;border-top:1px solid var(--hair);
+    font-size:11px;color:var(--ink-soft);
+  }
+  .foot .hint{font-family:var(--mono);letter-spacing:.01em;}
+
+  .msg{font-size:14px;color:var(--ink-soft);padding:6px 0;}
+  .err{color:#b42318;}
+
+  /* skeleton */
+  .sk{background:linear-gradient(90deg,#eef0f2 25%,#f6f7f8 50%,#eef0f2 75%);background-size:200% 100%;animation:sh 1.3s infinite;border-radius:6px;}
+  @keyframes sh{0%{background-position:200% 0;}100%{background-position:-200% 0;}}
+
+  @media (prefers-reduced-motion: reduce){
+    .opt .fill{transition:none;}
+    .dot::after{animation:none;}
+    .sk{animation:none;}
+  }
+</style>
+</head>
+<body>
+  <div class="poll" id="poll" role="group" aria-label="Reader poll">
+    <div class="meta">
+      <span id="eyebrow">Reader poll</span>
+      <span class="live"><span class="dot" style="visibility:hidden" id="dot"></span><span id="count">&nbsp;</span></span>
+    </div>
+    <div id="body">
+      <div class="sk" style="height:24px;width:80%;margin:14px 0 18px"></div>
+      <div class="sk" style="height:42px;margin-bottom:8px"></div>
+      <div class="sk" style="height:42px;margin-bottom:8px"></div>
+      <div class="sk" style="height:42px"></div>
+    </div>
+    <div class="foot">
+      <span class="hint" id="hint">Resets daily at midnight PT</span>
+      <span class="hint" id="status">&nbsp;</span>
+    </div>
+  </div>
+
+<script type="module">
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+
+/* ======================================================================
+   1) CONFIG — paste your Supabase Project URL and anon (publishable) key.
+      Find them in: Supabase Dashboard -> Project Settings -> API.
+      The anon/publishable key is safe to ship in client code.
+   ====================================================================== */
+const SUPABASE_URL = 'https://YOUR-PROJECT-ref.supabase.co';
+const SUPABASE_KEY = 'YOUR-ANON-OR-PUBLISHABLE-KEY';
+
+/* ====================================================================== */
+
+const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+const $ = (id) => document.getElementById(id);
+const REFRESH_MS = 20000;
+
+// --- persistent per-browser voter token (one identity, survives reloads) ---
+function getVoterToken(){
+  let t;
+  try { t = localStorage.getItem('rp_voter_token'); } catch(_){}
+  if(!t){
+    t = (crypto.randomUUID && crypto.randomUUID()) ||
+        ('xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,c=>{
+          const r=Math.random()*16|0, v=c==='x'?r:(r&0x3|0x8); return v.toString(16);}));
+    try { localStorage.setItem('rp_voter_token', t); } catch(_){}
+  }
+  return t;
+}
+
+// --- decode the poll definition from ?p=<base64url(JSON)> ---
+function decodePoll(){
+  const raw = new URLSearchParams(location.search).get('p');
+  if(!raw) throw new Error('No poll data in the link.');
+  let json;
+  try{
+    const b64 = raw.replace(/-/g,'+').replace(/_/g,'/');
+    const pad = b64 + '==='.slice((b64.length + 3) % 4);
+    json = decodeURIComponent(escape(atob(pad)));
+  }catch(_){ throw new Error('This poll link looks corrupted.'); }
+  const def = JSON.parse(json);
+  if(!def || !def.i || !def.q || !Array.isArray(def.o)) throw new Error('This poll link is incomplete.');
+  if(def.o.length < 3 || def.o.length > 6) throw new Error('A poll needs 3 to 6 options.');
+  return { id:String(def.i), question:String(def.q), options:def.o.map(String) };
+}
+
+// --- iframe auto-height for embedders that listen for it ---
+function postHeight(){
+  try{ parent.postMessage({ type:'pollwidget:height', height: document.documentElement.scrollHeight }, '*'); }catch(_){}
+}
+
+let poll, token, voted = false, myChoice = null, busy = false;
+
+function render(results){
+  const counts = (results && results.counts) || {};
+  const total  = (results && results.total) || 0;
+  let max = -1;
+  poll.options.forEach((_,i)=>{ const n = counts[i]||0; if(n>max) max=n; });
+
+  const body = $('body');
+  body.className = voted ? 'results-mode' : '';
+  body.innerHTML = '';
+
+  const q = document.createElement('div');
+  q.className='question'; q.textContent = poll.question;
+  body.appendChild(q);
+
+  const wrap = document.createElement('div'); wrap.className='options';
+  poll.options.forEach((label, i)=>{
+    const n = counts[i]||0;
+    const pct = total>0 ? Math.round((n/total)*100) : 0;
+    const btn = document.createElement('button');
+    btn.className = 'opt';
+    btn.type='button';
+    btn.disabled = busy;
+    if(voted){
+      if(i===myChoice) btn.classList.add('mine');
+      if(n===max && max>0) btn.classList.add('leading');
+      btn.setAttribute('aria-label', `${label}: ${pct}% (${n} ${n===1?'vote':'votes'})`);
+      btn.innerHTML =
+        `<span class="fill"></span>`+
+        `<span class="row"><span class="label"><span class="text">${esc(label)}</span>`+
+        `${i===myChoice?'<span class="tag">Your vote</span>':''}</span>`+
+        `<span class="pct">${pct}%</span></span>`;
+      requestAnimationFrame(()=>{ btn.querySelector('.fill').style.width = pct+'%'; });
+    } else {
+      btn.innerHTML = `<span class="row"><span class="label"><span class="text">${esc(label)}</span></span></span>`;
+    }
+    btn.addEventListener('click', ()=>vote(i));
+    wrap.appendChild(btn);
+  });
+  body.appendChild(wrap);
+
+  $('dot').style.visibility = 'visible';
+  $('count').textContent = `${total} ${total===1?'vote':'votes'} today`;
+  $('eyebrow').textContent = voted ? 'Live results' : 'Reader poll';
+  postHeight();
+}
+
+function esc(s){ return s.replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+async function vote(i){
+  if(busy) return;
+  if(voted && i===myChoice) return; // already on this choice
+  busy = true; $('status').textContent = 'Saving…';
+  // optimistic UI: lock buttons
+  document.querySelectorAll('.opt').forEach(b=>b.disabled=true);
+  const { data, error } = await supabase.rpc('cast_vote', {
+    p_poll_id: poll.id, p_voter_token: token,
+    p_option_index: i, p_num_options: poll.options.length
+  });
+  busy = false;
+  if(error){
+    $('status').textContent = 'Could not save — tap to retry';
+    document.querySelectorAll('.opt').forEach(b=>b.disabled=false);
+    return;
+  }
+  voted = true; myChoice = i; $('status').textContent = '';
+  render(data);
+}
+
+async function refresh(){
+  if(document.hidden) return;
+  const { data, error } = await supabase.rpc('get_results', { p_poll_id: poll.id });
+  if(!error && data) render(data);
+}
+
+async function init(){
+  try{
+    poll = decodePoll();
+    token = getVoterToken();
+  }catch(e){
+    $('body').innerHTML = `<div class="msg err">${esc(e.message)}</div>`;
+    $('dot').style.visibility='hidden'; postHeight(); return;
+  }
+  if(SUPABASE_URL.includes('YOUR-PROJECT')){
+    $('body').innerHTML = `<div class="msg err">Widget not configured: set SUPABASE_URL and SUPABASE_KEY in index.html.</div>`;
+    postHeight(); return;
+  }
+  await refresh();              // show the question + current tally
+  setInterval(refresh, REFRESH_MS);
+  document.addEventListener('visibilitychange', ()=>{ if(!document.hidden) refresh(); });
+}
+
+init();
+window.addEventListener('load', postHeight);
+</script>
+</body>
+</html>
