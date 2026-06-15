@@ -166,8 +166,8 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
       Find them in: Supabase Dashboard -> Project Settings -> API.
       The anon/publishable key is safe to ship in client code.
    ====================================================================== */
-const SUPABASE_URL = 'https://YOUR-PROJECT-ref.supabase.co';
-const SUPABASE_KEY = 'YOUR-ANON-OR-PUBLISHABLE-KEY';
+const SUPABASE_URL = 'https://zjngzjcrbfdtcvokdvyx.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_50nNXhHcse4RZ_VgewI1Qw_5NOK4HmG';
 
 /* ====================================================================== */
 
@@ -293,7 +293,7 @@ async function init(){
     $('body').innerHTML = `<div class="msg err">${esc(e.message)}</div>`;
     $('dot').style.visibility='hidden'; postHeight(); return;
   }
-  if(SUPABASE_URL.includes('YOUR-PROJECT')){
+  if(SUPABASE_URL.includes('YOUR-PROJECT') || SUPABASE_KEY.includes('YOUR-ANON')){
     $('body').innerHTML = `<div class="msg err">Widget not configured: set SUPABASE_URL and SUPABASE_KEY in index.html.</div>`;
     postHeight(); return;
   }
