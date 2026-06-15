@@ -125,6 +125,10 @@
     font-size:11px;color:var(--ink-soft);
   }
   .foot .hint{font-family:var(--mono);letter-spacing:.01em;}
+  .foot-right{display:flex;align-items:center;gap:10px;}
+  .create-link{font-size:11px;color:var(--ink-soft);text-decoration:none;font-weight:500;white-space:nowrap;}
+  .create-link:hover{color:var(--field);text-decoration:underline;}
+  .create-link:focus-visible{outline:2px solid var(--field);outline-offset:2px;border-radius:3px;}
 
   .msg{font-size:14px;color:var(--ink-soft);padding:6px 0;}
   .err{color:#b42318;}
@@ -154,7 +158,10 @@
     </div>
     <div class="foot">
       <span class="hint" id="hint">Resets daily at midnight PT</span>
-      <span class="hint" id="status">&nbsp;</span>
+      <span class="foot-right">
+        <span class="hint" id="status"></span>
+        <a class="create-link" href="https://trbaker.github.io/polls/create.html" target="_blank" rel="noopener">Create a poll</a>
+      </span>
     </div>
   </div>
 
